@@ -60,7 +60,7 @@ yyy
 
 ### Rotate a secret
 
-This presumes you have set up the [rotation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html).
+This presumes you have set up the [rotation](https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html) Lambda.
 
 ```text
 ▶ SECRET_NAME='foo' manage_secrets.sh -r
