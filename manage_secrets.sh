@@ -1,26 +1,30 @@
 #!/usr/bin/env bash
 
-OPTIONS="hlgcrud"
-
 usage() {
-  echo "Usage: [SECRET_NAME=secret_name] \
-[SECRET_DESC='secret desc'] [SECRET=xxxx] bash $0 [-$OPTIONS]"
-  echo "Lists, creates, updates, rotates, or deletes a secret."
+  echo "Usage: bash $0 [-h] [-l]
+Usage: bash $0 -g SECRET_NAME
+Usage: bash $0 -c SECRET_NAME -D SECRET_DESC -s SECRET
+Usage: bash $0 -r SECRET_NAME
+Usage: bash $0 -u SECRET_NAME -s SECRET
+Usage: bash $0 -d SECRET_NAME
+Lists (-l), creates (-c), updates (-u), rotates (-r), or deletes (-d) a secret."
   exit 1
 }
 
 get_opts() {
   command=(aws secretsmanager)
 
-  while getopts "$OPTIONS" opt ; do
+  while getopts "hD:s:lg:c:r:u:d:" opt ; do
     case $opt in
       h) usage ;;
+      D) secret_desc="$OPTARG" ;;
+      s) secret="$OPTARG" ;;
       l) command+=(list-secrets     --query      'SecretList[].Name') ;;
-      g) command+=(get-secret-value --secret-id  "$SECRET_NAME") ;;
-      c) command+=(create-secret    --name       "$SECRET_NAME") ;;
-      r) command+=(rotate-secret    --secret-id  "$SECRET_NAME") ;;
-      u) command+=(update-secret    --secret-id  "$SECRET_NAME") ;;
-      d) command+=(delete-secret    --secret-id  "$SECRET_NAME") ;;
+      g) command+=(get-secret-value --secret-id  "$OPTARG") ;;
+      c) command+=(create-secret    --name       "$OPTARG") ;;
+      r) command+=(rotate-secret    --secret-id  "$OPTARG") ;;
+      u) command+=(update-secret    --secret-id  "$OPTARG") ;;
+      d) command+=(delete-secret    --secret-id  "$OPTARG") ;;
 
       \?) echo "ERROR: Invalid option -$OPTARG"
         usage ;;
@@ -30,26 +34,26 @@ get_opts() {
 }
 
 post_process_opts() {
-  if [ "${#command[@]}" -eq 2 ] ; then
-    command+=(list-secrets --query 'SecretList[].Name')
-  fi
+  [ "${#command[@]}" -eq 2 ] && usage
 
   grep -q "list-secrets" <<< "${command[@]}" && return
 
   if grep -q "get-secret-value" <<< "${command[@]}" ; then
-    [ ! -z "$SECRET" ] && usage
-    [ ! -z "$SECRET_DESC" ] && usage
+    [ -n "$secret" ] && usage
+    [ -n "$secret_desc" ] && usage
     command+=(--query 'SecretString' --output 'text')
   fi
 
-  if [ ! -z "$SECRET_DESC" ] ; then
-    command+=(--description "$SECRET_DESC")
+  if grep -q "create-secret" <<< "${command[@]}" ; then
+    [ -z "$secret" ] && usage
+    [ -n "$secret_desc" ] && \
+      command+=(--description "$secret_desc")
+    command+=(--secret-string "$secret")
   fi
 
-  [ -z "$SECRET_NAME" ] && usage
-
-  if [ ! -z "$SECRET" ] ; then
-    command+=(--secret-string "$SECRET")
+  if grep -q "update-secret" <<< "${command[@]}" ; then
+    [ -z "$secret" ] && usage
+    command+=(--secret-string "$secret")
   fi
 }
 
